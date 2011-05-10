@@ -1,0 +1,11 @@
+Simple Evented Calendar for Python
+==================================
+
+This module provides a simple way to generate calendars with both single day
+and multiday events. It uses the same algorithm as Google Calendars does to
+pack mutliday events into continuous rows across multiple columns, using the
+smallest amount of vertical spacing.
+
+To run the example, simply type:
+  `python example.py > pyeventcalendar.html`
+
