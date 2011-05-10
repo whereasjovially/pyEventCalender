@@ -7,5 +7,6 @@ pack mutliday events into continuous rows across multiple columns, using the
 smallest amount of vertical spacing.
 
 To run the example, simply type:
-  `python example.py > example.html`
+
+    python example.py > example.html
 
