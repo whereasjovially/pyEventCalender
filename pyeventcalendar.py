@@ -55,12 +55,23 @@ class EventCalendar(calendar.HTMLCalendar):
       return '<td class="noday">&nbsp;</td>'
     else:
       label = '&nbsp;'
+      colspan = 1
       if (self.eventmap.get(thedate)):
         if self.eventmap.get(thedate).get(track):
           event_id = self.eventmap.get(thedate).get(track)
           event = self.events[event_id]
+
+          event_length = (event.end - thedate).days + 1
+          days_left_in_week = 7 - weekday
+          colspan = min(event_length, days_left_in_week)
+
+          cell_start = thedate == event.start or not weekday
+          if not cell_start:
+            return ''
+
           label = '<div class="filled">%s</div>' % event
-      return '<td class="%s">%s</td>' % (self.cssclasses[weekday], label)
+      return '<td colspan="%d" class="%s">%s</td>' % (colspan, self.cssclasses[weekday], label)
+
 
   def formatweek(self, theweek):
     """ Return a complete week as a set of table rows.
