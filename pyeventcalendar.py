@@ -9,9 +9,7 @@ class EventCalendar(calendar.HTMLCalendar):
     def __init__(self, firstweekday=0, rows=5):
         super(calendar.HTMLCalendar, self).__init__(firstweekday)
         self.rows = rows
-        self.events = {}
         self.eventmap = {}
-        self.tracks = {}
         self.trackmap = {}
 
 
@@ -25,62 +23,57 @@ class EventCalendar(calendar.HTMLCalendar):
         The packing algorithm requires events be added in order of the events
         start date.
         """
-        self.events[event.pk] = event
         for d in rrule(DAILY, dtstart=event.start, until=event.end):
             d = d.date()
             if not self.eventmap.get(d):
                 self.eventmap[d] = {}
-            track = self.gettrack(event.pk, d)
-            self.eventmap[d][track] = event.pk
+            track = self.gettrack(event, d)
+            self.eventmap[d][track] = event
 
 
-    def gettrack(self, event_id, date):
+    def gettrack(self, event, date):
         """ An algorithm to pack events.
 
         This algorithm matches that used by Google Calendar. It attempts to pack
         events into the smallest vertical space while keeping multi-day events
         in the same continuous row.
         """
-        if self.trackmap.get(event_id) \
+        if self.trackmap.get(event) \
                 and not self.firstweekday == date.weekday():
-            track = self.trackmap[event_id]
+            track = self.trackmap[event]
         else:
             track = next(n for n in itertools.count() if n not in self.eventmap[date])
-            self.trackmap[event_id] = track
+            self.trackmap[event] = track
         return track
 
 
     def formattrack(self, day, weekday, thedate, track):
-        """ Render each day in the calendar.
-
-        This relies on the event object having a render() method.
-        """
-        if day == 0:
-            return '<td class="noday">&nbsp;</td>'
-
+        """ Render each day in the calendar. """
         label = '&nbsp;'
         colspan = 1
         eventmap = self.eventmap.get(thedate)
         if eventmap:
-            event_id = eventmap.get(track)
-            if event_id:
-                event = self.events[event_id]
+            event = eventmap.get(track)
+            if event:
+                start_of_week = not weekday
 
-                event_cell_start = thedate == event.start or not weekday
+                # Don't start a cell if it's covered by a colspan
+                event_cell_start = thedate == event.start or start_of_week
                 if not event_cell_start:
                     return ''
 
+                # Work out the colspan if we're starting a new event
                 event_length = (event.end - thedate).days + 1
                 days_left_in_week = 7 - weekday
                 colspan = min(event_length, days_left_in_week)
 
-                classes = ['event']
+                # Add some classes to provide visual cues for events spanning weeks
+                classes = getattr(event, 'classes', [])
                 if event_length > days_left_in_week: classes.append('cr')
-                if thedate != event.start and not weekday: classes.append('cl')
+                if thedate != event.start and start_of_week: classes.append('cl')
 
                 label = '<div class="%s">%s</div>' % (' '.join(classes), event)
-        return '<td colspan="%d" class="%s">%s</td>' % \
-            (colspan, self.cssclasses[weekday], label)
+        return '<td colspan="%d">%s</td>' % (colspan, label)
 
 
     def formatweek(self, theweek):
@@ -112,13 +105,12 @@ class EventCalendar(calendar.HTMLCalendar):
         a('\n')
         a(self.formatweekheader())
         a('\n')
-        for week in self.monthdays2calendar(theyear, themonth):
+        for week in self.monthdatescalendar(theyear, themonth):
             weekplus = []
+            wd = 0
             for day in week:
-                if day[0] == 0:
-                    weekplus.append((day[0], day[1], ''))
-                else:
-                    weekplus.append((day[0], day[1], date(theyear, themonth, day[0])))
+                weekplus.append((day.day, wd, day))
+                wd += 1
             a(self.formatweek(weekplus))
             a('\n')
         a('</table>')
@@ -127,17 +119,25 @@ class EventCalendar(calendar.HTMLCalendar):
 
 
 class Event(object):
-    """ Generic event class. You may use your own or extend this one. """
-    pk        = None # Unique identifier for this event
-    start = None
-    end     = None
-    title = None
+    """ Generic event class.
 
-    def __init__(self, pk, start, end, title):
-        self.pk        = pk
-        self.start = start
+    You may use your own class or extend this one, but your object must be
+    hashable.
+
+    The required parameters are start and end, both of the type datetime.date.
+    When rendering the calendar, the object's __str__ method is called. Extra
+    classes can be added to the label by adding them to self.classes.
+    """
+    start   = None
+    end     = None
+    title   = None
+    classes = []
+
+    def __init__(self, start, end, title, group):
+        self.start   = start
         self.end     = end
-        self.title = title
+        self.title   = title
+        self.classes = classes
 
     def __str__(self):
         return "%s" % self.title
