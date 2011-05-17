@@ -69,8 +69,8 @@ class EventCalendar(calendar.HTMLCalendar):
 
                 # Add some classes to provide visual cues for events spanning weeks
                 classes = getattr(event, 'classes', [])
-                if event_length > days_left_in_week: classes.append('cr')
-                if thedate != event.start and start_of_week: classes.append('cl')
+                if thedate != event.start and start_of_week: classes = classes + ['cl']
+                if event_length > days_left_in_week: classes = classes + ['cr']
 
                 label = '<div class="%s">%s</div>' % (' '.join(classes), event)
         return '<td colspan="%d">%s</td>' % (colspan, label)
